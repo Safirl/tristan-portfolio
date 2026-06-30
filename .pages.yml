@@ -1,0 +1,43 @@
+media:
+  - name: images
+    label: Images
+    input: public/content/images
+    output: /media/images
+    categories: [image]
+    # actions:
+    #   - name: optimize-images
+    #     label: Optimize images
+    #     workflow: pages-cms-media-action.yml
+  - name: videos
+    label: Vidéos
+    input: public/content/videos
+    output: /media/videos
+    categories: [video]
+
+content:
+  # PREMIÈRE COLLECTION : PROJETS
+  - name: projects
+    label: Mes Projets
+    type: collection
+    path: src/content/projects
+    fields:
+      - name: title
+        label: Titre
+        type: string
+      - name: description
+        label: Description
+        type: rich-text
+      - name: video
+        label: Vidéo
+        type: file
+        media: videos
+        required: false
+      - name: images
+        label: Images
+        type: image
+        media: images
+        list: true
+      - name: published
+        label: Publié ?
+        type: boolean
+        default: true
