@@ -30,12 +30,14 @@ content:
       - name: video
         label: Vidéo
         type: file
-        media: videos
+        options: 
+          media: videos
         required: false
       - name: images
         label: Images
         type: image
-        media: images
+        options:
+          media: images
         list: true
       - name: published
         label: Publié ?
