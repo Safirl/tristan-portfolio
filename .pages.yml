@@ -28,10 +28,8 @@ content:
         label: Description
         type: rich-text
       - name: video
-        label: Vidéo
-        type: file
-        options: 
-          media: videos
+        label: url vidéo
+        type: string
         required: false
       - name: images
         label: Images
