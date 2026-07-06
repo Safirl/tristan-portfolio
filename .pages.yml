@@ -24,7 +24,7 @@ content:
       - name: title
         label: Titre
         type: string
-      - name: description
+      - name: body
         label: Description
         type: rich-text
       - name: video
