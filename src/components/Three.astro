@@ -1,0 +1,32 @@
+<canvas id="three"></canvas>
+
+<style lang="scss">
+    #three {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        background-color: red;
+    }
+</style>
+
+<script>
+    import {
+        Experience,
+        OrbitCamera,
+        templateSources,
+        TemplateWorld,
+    } from "@plugins/three-base-experience";
+
+    const canvas = document.getElementById("three") as HTMLCanvasElement;
+
+    if (!canvas) {
+        throw new Error(
+            "Canvas element is not valid, can't instantiate experience.",
+        );
+    }
+
+    const camera = new OrbitCamera();
+    const world = new TemplateWorld();
+    const experience = new Experience(canvas, templateSources, camera, world);
+    experience.init();
+</script>
