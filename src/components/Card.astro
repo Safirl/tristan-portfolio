@@ -1,0 +1,18 @@
+---
+const { project } = Astro.props;
+---
+
+<div id="card" data-project={JSON.stringify(project)}></div>
+
+<script>
+    import Card from "../three/Card";
+    document.querySelectorAll("#card").forEach((el) => {
+        const div = el as HTMLDivElement;
+        const project = JSON.parse(div.dataset.project ?? "{}");
+        const card = new Card(
+            project.id,
+            project.data.title,
+            project.data.images[0],
+        );
+    });
+</script>

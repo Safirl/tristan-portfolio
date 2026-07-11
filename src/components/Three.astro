@@ -1,11 +1,19 @@
-<canvas id="three"></canvas>
+---
+import { getCollection } from "astro:content";
+import Card from "../components/Card.astro";
+let projects = await getCollection("projects", ({ data }) => {
+    return data.published;
+});
+---
+
+<canvas id="three" data-projects={JSON.stringify(projects)}></canvas>
+<!-- {projects.map((item) => <Card project={item} />)} -->
 
 <style lang="scss">
     #three {
         width: 100%;
         height: 100%;
         position: absolute;
-        background-color: red;
     }
 </style>
 
@@ -13,9 +21,11 @@
     import {
         Experience,
         OrbitCamera,
-        templateSources,
         TemplateWorld,
     } from "@plugins/three-base-experience";
+    import sources from "../three/sources";
+    import ExpWorld from "../three/World";
+    import ExpCamera from "../three/Camera";
 
     const canvas = document.getElementById("three") as HTMLCanvasElement;
 
@@ -26,7 +36,8 @@
     }
 
     const camera = new OrbitCamera();
-    const world = new TemplateWorld();
-    const experience = new Experience(canvas, templateSources, camera, world);
+    const projects = JSON.parse(canvas.dataset.projects ?? "{}");
+    const world = new ExpWorld(projects);
+    const experience = new Experience(canvas, sources, camera, world);
     experience.init();
 </script>
