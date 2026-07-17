@@ -18,11 +18,7 @@ let projects = await getCollection("projects", ({ data }) => {
 </style>
 
 <script>
-    import {
-        Experience,
-        OrbitCamera,
-        TemplateWorld,
-    } from "@plugins/three-base-experience";
+    import { Experience, OrbitCamera } from "@plugins/three-base-experience";
     import sources from "../three/sources";
     import ExpWorld from "../three/World";
     import ExpCamera from "../three/Camera";
@@ -35,7 +31,7 @@ let projects = await getCollection("projects", ({ data }) => {
         );
     }
 
-    const camera = new OrbitCamera();
+    const camera = new ExpCamera();
     const projects = JSON.parse(canvas.dataset.projects ?? "{}");
     const world = new ExpWorld(projects);
     const experience = new Experience(canvas, sources, camera, world);
