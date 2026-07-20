@@ -4,13 +4,8 @@ import type { GLTF } from "three/examples/jsm/Addons.js";
 import { Actor } from "@plugins/three-base-experience";
 import { World } from "@plugins/three-base-experience";
 import * as THREE from "three";
-import Card from "./Card";
-
-interface project {
-  id: string;
-  title: string;
-  imageUrl: string;
-}
+import { type project } from "./types";
+import CardManager from "./CardManager";
 
 export default class ExpWorld extends World {
   declare experience: Experience;
@@ -18,7 +13,7 @@ export default class ExpWorld extends World {
   declare environment: Environment;
   declare resources: Experience["resources"];
   declare trumpet: Actor;
-  declare plane: Card;
+  declare cardManager: CardManager;
   declare private projects: project[];
   public declare raycaster: THREE.Raycaster
   public mousePosition = new THREE.Vector2()
@@ -52,8 +47,8 @@ export default class ExpWorld extends World {
       true,
       false,
     );
-    this.plane = new Card("1", "1", "1")
-    this.plane.init()
+    this.cardManager = new CardManager(this.projects)
+    this.cardManager.init()
   }
 
   onMouseMove = (event: MouseEvent) => {
@@ -70,8 +65,8 @@ export default class ExpWorld extends World {
     if (this.trumpet) {
       this.trumpet.update();
     }
-    if (this.plane) {
-      this.plane.update()
+    if (this.cardManager) {
+      this.cardManager.update()
     }
   }
 }

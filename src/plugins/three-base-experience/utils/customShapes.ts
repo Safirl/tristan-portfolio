@@ -1,5 +1,14 @@
 import * as THREE from "three/webgpu"
 
+/**
+ * Returns a rounded rectangle shape geometry. Caution: If you want to modify the vertex, you should better create a plane geometry and add a SDF for rounded corners
+ * @param x
+ * @param y
+ * @param width
+ * @param height
+ * @param radius
+ * @returns created ShapeGeometry
+ */
 export const createRoundedRectangleGeometry = (x: number, y: number, width: number, height: number, radius: number): THREE.ShapeGeometry => {
   const roundedRectShape = new THREE.Shape();
 	roundedRectShape.moveTo( x, y + radius );

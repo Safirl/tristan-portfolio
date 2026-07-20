@@ -8,7 +8,7 @@
     "paths": {
       "@plugins/*": ["./src/plugins/*"],
       "@shaders/*": ["./src/shaders/*"],
-    },
+    }
   },
 }
 // {

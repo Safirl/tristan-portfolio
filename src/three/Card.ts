@@ -2,36 +2,47 @@ import {
   Actor,
   Debug,
   Experience,
+  roundedBoxSDF,
   type LifeTimeObject,
 } from "@plugins/three-base-experience";
 import * as THREE from "three/webgpu";
-import { texture, uv, vec4 } from "three/tsl";
-import { createRoundedRectangleGeometry } from "@plugins/three-base-experience/utils/customShapes";
+import { Discard, float, Fn, positionLocal, select, sin, texture, time, uniform, uv, vec2, vec3 } from "three/tsl";
+import { createRoundedRectangleGeometry } from "@plugins/three-base-experience";
 import type GUI from "lil-gui";
 import gsap from "gsap"
-import { CustomEase } from "gsap/all";
 import type ExpWorld from "./World";
 import { lerp } from "three/src/math/MathUtils.js";
 
 export default class Card implements LifeTimeObject {
-  declare public id: string;
+  declare public id: number;
   declare public title: string;
   declare public imageUrl: string;
-  declare private mesh: THREE.Mesh;
+  declare public mesh: THREE.Mesh;
   declare private experience: Experience;
   declare private debugFolder: GUI;
 
   private friction = 0;
   private targetFriction = .0004;
   private speed = {value: 8};
-  private radius = 10;
+  private directionRadius = 10;
   private targetPosition = new THREE.Vector2();
-  private hoverState: "hover" | "idle" = "idle"
+  public hoverState: "hover" | "idle" = "idle"
+  public previousHoverState: "hover" | "idle" = "idle"
 
-  private initialPosition = new THREE.Vector3(-.16, 0.55, -2.6)
-  private initialSpeed = 8;
+  public targetAngle = Math.PI / 10;
 
-  constructor(id: string, title: string, imageUrl: string) {
+  private initialPosition = new THREE.Vector3(-.16, 0.3, -2.09)
+  private initialSpeed = 12;
+  private spawnCompleted = false;
+
+  //Shader
+  public waveAmplitude = uniform(.01);
+  public waveFrequency = uniform(21.9);
+  private width = 16 / 20;
+  private height = 9 / 20;
+  private cardRadius = .15;
+
+  constructor(id: number, title: string, imageUrl: string) {
     if (!id || !title || !imageUrl) {
       throw new Error("Can't create card: id, title, or imageUrl is not valid");
     }
@@ -45,6 +56,7 @@ export default class Card implements LifeTimeObject {
     if (this.experience.debug.active) {
       this.debugFolder = this.experience.debug.ui.addFolder("card")
     }
+    this.initialPosition.x += id / 100
   }
 
   init = () => {
@@ -57,17 +69,26 @@ export default class Card implements LifeTimeObject {
 
   spawnCard = () => {
     this.resetValues()
+
     const angle =
       (3 * 2 * Math.PI) / 4 //initial angle
-      + Math.PI / 5 // angle to add up and down
+      + this.targetAngle // angle to add up and down
       * (Math.random() - .5) * 2
-    this.targetPosition.x = this.initialPosition.y + Math.cos(angle) * this.radius;
-    this.targetPosition.y = this.initialPosition.z + Math.sin(angle) * this.radius;
+    this.targetPosition.x = this.initialPosition.y + Math.cos(angle) * this.directionRadius;
+    this.targetPosition.y = this.initialPosition.z + Math.sin(angle) * this.directionRadius;
     this.friction = this.targetFriction
+    gsap.to(this.mesh.scale, {
+      x: 1,
+      y: 1,
+      z: 1,
+      // ease: "bounce.inOut",
+      duration: .9,
+    })
     gsap.to(this.speed, {
       value: 1,
       ease: "power1.out",
-      duration: .8
+      duration: 1.1,
+      onComplete: () => this.spawnCompleted = true
     })
   }
 
@@ -87,7 +108,7 @@ export default class Card implements LifeTimeObject {
     const path = new THREE.CatmullRomCurve3(points)
     const geometry = new THREE.BufferGeometry().setFromPoints( path.getPoints( 50 ) );
     const material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
-    // Create the final object to add to the scene
+
     const curveObject = new THREE.Line(geometry, material);
     this.experience.scene.add(curveObject)
   }
@@ -98,57 +119,70 @@ export default class Card implements LifeTimeObject {
     this.mesh.position.z = this.initialPosition.z
     this.targetPosition.x = this.initialPosition.y
     this.targetPosition.y = this.initialPosition.z
-    this.mesh.rotation.y = Math.PI / 2
+    const camRotation = this.experience.camera.instance.rotation
+    this.mesh.rotation.set(camRotation.x, camRotation.y, camRotation.z)
     this.speed.value = this.initialSpeed
+    this.spawnCompleted = false;
+    this.mesh.scale.set(0, 0, 0);
   }
 
-  createGeometry = (): THREE.ShapeGeometry => {
-    return createRoundedRectangleGeometry(-0.5,-0.5,16/20,9/20,.15);
+  createGeometry = () => {
+    // return createRoundedRectangleGeometry(-0.5,-0.25,16/20,9/20,.15);
+    return new THREE.PlaneGeometry(16 / 20, 9 / 20, 200, 200);
   };
 
   createMaterial = (): THREE.MeshBasicNodeMaterial => {
+    const alphaTest = Fn(({ width, height, radius }: { width: THREE.Node<"float">; height: THREE.Node<"float">; radius: THREE.Node<"float"> }) => {
+      const d = roundedBoxSDF(
+          uv().sub(0.5).mul(vec2(width, height)),
+          vec2(width, height).mul(0.5),
+          float(radius)
+        );
+        return d.lessThan(0.0);
+    })
+
+    //uniforms
+    const widthNode = uniform(this.width)
+    const heightNode = uniform(this.height)
+    const radiusNode = uniform(this.cardRadius)
+
     const resources = this.experience.resources;
     const material = new THREE.MeshBasicNodeMaterial();
+    material.transparent = false;
+    material.alphaTest = .5;
+    const waveY = sin(time.add(positionLocal.x.mul(this.waveFrequency))).mul(this.waveAmplitude)
+    const waveZ = sin(time.add(positionLocal.y.mul(this.waveFrequency))).mul(this.waveAmplitude)
+    const newPosition = vec3(positionLocal.x, positionLocal.y.add(waveY), positionLocal.z.add(waveZ))
+    material.positionNode = newPosition;
+    // Discard(alphaTest({ width: widthNode, height: heightNode, radius: radiusNode }));
     material.colorNode = texture(resources.items["Rendus 3D Christian Boragine"] as THREE.Texture)
-
-    material.map = resources.items[
-      "Rendus 3D Christian Boragine"
-    ] as THREE.Texture;
+    material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: radiusNode }), 1, 0)
     return material;
   };
+
 
   destroy = () => { };
 
   update = () => {
-    const world = this.experience.world as ExpWorld
-    if (!world) return;
-    const intersection = world.raycaster.intersectObject(this.mesh);
-    this.hoverState = intersection.length > 0 ? "hover" : "idle"
-    document.body.style.cursor = intersection.length > 0 ? "pointer" : "inherit"
-    const newFriction = intersection.length > 0 ? 0 : this.targetFriction
-    gsap.to(this, {
-      friction: newFriction,
-      duration: 1.5
-    })
-    // if (intersection.length > 0 && this.hoverState === "idle") {
-    //   this.hoverState = "hover"
-    //   document.body.style.cursor = "pointer"
-    // } else if (intersection.length < 1 && this.hoverState === "hover") {
-    //   this.hoverState = "idle"
-    //   document.body.style.cursor = "inherit"
-    //   this.friction = this.targetFriction;
-    // }
     this.animateHover()
     this.moveCard()
   };
 
   animateHover = () => {
+    if (!this.spawnCompleted) return;
+    if (this.previousHoverState === this.hoverState) return;
+    const newFriction = this.hoverState === "hover" ? 0 : this.targetFriction
+    gsap.to(this, {
+      friction: newFriction,
+      duration: 1.5
+    })
     const scale = this.hoverState === "hover" ? 1.1 : 1.
     gsap.to(this.mesh.scale,{
       x: scale,
       y: scale,
       z: scale,
     })
+    this.previousHoverState = this.hoverState
   }
 
   moveCard = () => {
@@ -161,7 +195,11 @@ export default class Card implements LifeTimeObject {
   }
 
   setDebugObject = () => {
+    this.debugFolder.add(this.waveAmplitude, "value").min(0).max(100).name("wave amplitude")
+    this.debugFolder.add(this.waveFrequency, "value").min(0).max(100).name("wave frequency")
+
     const positionFolder = this.debugFolder.addFolder("Position");
+    positionFolder.open(false)
     positionFolder
       .add(this.mesh.position, "x")
       .name("x")
@@ -182,6 +220,7 @@ export default class Card implements LifeTimeObject {
       .step(0.01);
 
     const rotationFolder = this.debugFolder.addFolder("Rotation");
+    rotationFolder.open(false)
     rotationFolder
       .add(this.mesh.rotation, "x")
       .name("x")

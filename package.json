@@ -20,7 +20,7 @@
     "vite-plugin-restart": "^2.0.0"
   },
   "devDependencies": {
-    "@types/three": "^0.185.0",
+    "@types/three": "^0.185.1",
     "sass-embedded": "^1.100.0"
   }
 }
