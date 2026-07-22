@@ -23,24 +23,31 @@ export default class Card implements LifeTimeObject {
 
   private friction = 0;
   private targetFriction = .0004;
-  private speed = {value: 8};
   private directionRadius = 10;
   private targetPosition = new THREE.Vector2();
   public hoverState: "hover" | "idle" = "idle"
-  public previousHoverState: "hover" | "idle" = "idle"
+  public previousHoverState: "hover" | "idle" = this.hoverState
 
   public targetAngle = Math.PI / 10;
 
   private initialPosition = new THREE.Vector3(-.16, 0.3, -2.09)
   private initialSpeed = 12;
+  private speed = this.initialSpeed
   private spawnCompleted = false;
+  declare private xRotation: number
 
   //Shader
-  public waveAmplitude = uniform(.01);
-  public waveFrequency = uniform(21.9);
+  private targetWaveAmplitude = .01
+  private targetWaveFrequency = 21.9
+  private maxWaveAmplitude = .01
+  private maxWaveFrequency = 60
+  public waveAmplitude = uniform(this.maxWaveAmplitude);
+  public waveFrequency = uniform(this.maxWaveAmplitude);
+  public targetCardRadius = .15
+  public maxCardRadius = 1.
+  public cardRadius = uniform(this.maxCardRadius);
   private width = 16 / 20;
   private height = 9 / 20;
-  private cardRadius = .15;
 
   constructor(id: number, title: string, imageUrl: string) {
     if (!id || !title || !imageUrl) {
@@ -81,13 +88,28 @@ export default class Card implements LifeTimeObject {
       x: 1,
       y: 1,
       z: 1,
-      // ease: "bounce.inOut",
-      duration: .9,
+      duration: 2.,
+      ease: "back.out"
     })
-    gsap.to(this.speed, {
-      value: 1,
-      ease: "power1.out",
-      duration: 1.1,
+    gsap.to(this.cardRadius, {
+      value: this.targetCardRadius,
+      duration: 1.5,
+      ease: "back.out"
+    })
+    gsap.to(this.waveFrequency, {
+      value: this.targetWaveFrequency,
+      duration: 2.5,
+      ease: "power1.out"
+    })
+    gsap.to(this.waveAmplitude, {
+      value: this.targetWaveAmplitude,
+      duration: 2.5,
+      ease: "power1.out"
+    })
+    gsap.to(this, {
+      speed: 1,
+      ease: "power2.out",
+      duration: .8,
       onComplete: () => this.spawnCompleted = true
     })
   }
@@ -121,13 +143,24 @@ export default class Card implements LifeTimeObject {
     this.targetPosition.y = this.initialPosition.z
     const camRotation = this.experience.camera.instance.rotation
     this.mesh.rotation.set(camRotation.x, camRotation.y, camRotation.z)
-    this.speed.value = this.initialSpeed
+    this.speed = this.initialSpeed
     this.spawnCompleted = false;
     this.mesh.scale.set(0, 0, 0);
+    this.waveAmplitude.value = this.maxWaveAmplitude
+    this.waveFrequency.value = this.maxWaveFrequency
+    this.cardRadius.value = this.maxCardRadius
+
+    this.xRotation =
+      Math.PI / 10 // angle to add up and down
+      * (Math.random() - .5) * 2
+
+    console.log(this.xRotation)
+    this.mesh.rotation.x += this.xRotation;
   }
 
   createGeometry = () => {
     // return createRoundedRectangleGeometry(-0.5,-0.25,16/20,9/20,.15);
+    return new THREE.CircleGeometry(.3, 200)
     return new THREE.PlaneGeometry(16 / 20, 9 / 20, 200, 200);
   };
 
@@ -144,19 +177,17 @@ export default class Card implements LifeTimeObject {
     //uniforms
     const widthNode = uniform(this.width)
     const heightNode = uniform(this.height)
-    const radiusNode = uniform(this.cardRadius)
 
     const resources = this.experience.resources;
     const material = new THREE.MeshBasicNodeMaterial();
     material.transparent = false;
     material.alphaTest = .5;
-    const waveY = sin(time.add(positionLocal.x.mul(this.waveFrequency))).mul(this.waveAmplitude)
-    const waveZ = sin(time.add(positionLocal.y.mul(this.waveFrequency))).mul(this.waveAmplitude)
-    const newPosition = vec3(positionLocal.x, positionLocal.y.add(waveY), positionLocal.z.add(waveZ))
+    const waveY = sin(time.add(positionLocal.x.mul(this.waveFrequency))).mul(this.waveAmplitude) //TODO add speed
+    const waveZ = sin(time.add(positionLocal.y.mul(this.waveFrequency).mul(1.5))).mul(this.waveAmplitude.mul(10))
+    const newPosition = vec3(positionLocal.x, positionLocal.y.add(waveY), positionLocal.z)
     material.positionNode = newPosition;
-    // Discard(alphaTest({ width: widthNode, height: heightNode, radius: radiusNode }));
     material.colorNode = texture(resources.items["Rendus 3D Christian Boragine"] as THREE.Texture)
-    material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: radiusNode }), 1, 0)
+    // material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: this.cardRadius }), 1, 0)
     return material;
   };
 
@@ -187,16 +218,16 @@ export default class Card implements LifeTimeObject {
 
   moveCard = () => {
     // if (this.friction === 0) return;
-    this.mesh.position.y = lerp(this.mesh.position.y, this.targetPosition.x, this.friction * this.speed.value);
-    this.mesh.position.z = lerp(this.mesh.position.z, this.targetPosition.y, this.friction * this.speed.value);
+    this.mesh.position.y = lerp(this.mesh.position.y, this.targetPosition.x, this.friction * this.speed);
+    this.mesh.position.z = lerp(this.mesh.position.z, this.targetPosition.y, this.friction * this.speed);
     // this.mesh.lookAt(this.experience.camera.instance.position)
 
     // console.log(lerp(this.mesh.position.y, this.targetPosition.x, this.friction))
   }
 
   setDebugObject = () => {
-    this.debugFolder.add(this.waveAmplitude, "value").min(0).max(100).name("wave amplitude")
-    this.debugFolder.add(this.waveFrequency, "value").min(0).max(100).name("wave frequency")
+    this.debugFolder.add(this.waveAmplitude, "value").min(0).max(100).name("wave amplitude").step(.001)
+    this.debugFolder.add(this.waveFrequency, "value").min(0).max(100).name("wave frequency").step(.001)
 
     const positionFolder = this.debugFolder.addFolder("Position");
     positionFolder.open(false)

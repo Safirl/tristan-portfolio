@@ -7,7 +7,7 @@ import type GUI from "lil-gui";
 
 export default class CardManager implements LifeTimeObject {
   private cards: Card[] = [];
-  public spawnCountdown = 1000000//5000.;
+  public spawnCountdown = 5000.;
   private timer = this.spawnCountdown;
   private currentCard = 0;
 
@@ -15,7 +15,7 @@ export default class CardManager implements LifeTimeObject {
   private declare debugFolder: GUI
 
   constructor(projects: project[]) {
-    [1].forEach((project) => {
+    [1,2,3].forEach((project) => {
       const card = new Card(project, "1", "1")
       this.cards.push(card)
     })
