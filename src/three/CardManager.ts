@@ -6,7 +6,7 @@ import * as THREE from "three"
 import type GUI from "lil-gui";
 
 export default class CardManager implements LifeTimeObject {
-  private cards: Card[] = [];
+  public cards: Card[] = [];
   public spawnCountdown = 5000.;
   private timer = this.spawnCountdown;
   private currentCard = 0;
@@ -14,9 +14,16 @@ export default class CardManager implements LifeTimeObject {
   private declare experience: Experience;
   private declare debugFolder: GUI
 
+  /**
+   * Spacing between each card;
+   */
+  private spacing = 0.1;
+
   constructor(projects: project[]) {
-    [1,2,3].forEach((project) => {
-      const card = new Card(project, "1", "1")
+    //@todo later replace by real projects
+    const p = [0,1,2]
+    p.forEach((project) => {
+      const card = new Card(project, "1", "1", p.length - 1)
       this.cards.push(card)
     })
     if (!Experience.instance) {
@@ -45,11 +52,11 @@ export default class CardManager implements LifeTimeObject {
     })
     const exp = Experience.instance;
     if (!exp) return;
-    this.timer += exp.time.delta
-    if (this.timer >= this.spawnCountdown) {
-      this.spawnCard()
-      this.timer = 0;
-    }
+    // this.timer += exp.time.delta
+    // if (this.timer >= this.spawnCountdown) {
+    //   this.spawnCard()
+    //   this.timer = 0;
+    // }
 
     const world = exp.world as ExpWorld
     const cardMeshes = this.cards.map((c) => c.mesh)
@@ -66,11 +73,6 @@ export default class CardManager implements LifeTimeObject {
       else {
         c.hoverState = "idle"
       }
-      // const found = intersections.find((i) => {
-      //   if (i.object instanceof THREE.Mesh) {
-      //     return i.object === c.mesh
-      //   }
-      // })
     })
   };
 

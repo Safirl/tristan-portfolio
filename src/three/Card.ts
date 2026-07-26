@@ -31,10 +31,15 @@ export default class Card implements LifeTimeObject {
   public targetAngle = Math.PI / 10;
 
   private initialPosition = new THREE.Vector3(-.16, 0.3, -2.09)
-  private initialSpeed = 12;
+  private initialSpeed = .9;
+  private targetSpeed = .08;
   private speed = this.initialSpeed
   private spawnCompleted = false;
   declare private xRotation: number
+  declare private splineProgression: number;
+
+  //path
+  declare private path: THREE.CatmullRomCurve3
 
   //Shader
   private targetWaveAmplitude = .01
@@ -49,8 +54,8 @@ export default class Card implements LifeTimeObject {
   private width = 16 / 20;
   private height = 9 / 20;
 
-  constructor(id: number, title: string, imageUrl: string) {
-    if (!id || !title || !imageUrl) {
+  constructor(id: number, title: string, imageUrl: string, lastCardId: number) {
+    if (typeof id !== "number" || !title || !imageUrl) {
       throw new Error("Can't create card: id, title, or imageUrl is not valid");
     }
     this.id = id;
@@ -63,12 +68,12 @@ export default class Card implements LifeTimeObject {
     if (this.experience.debug.active) {
       this.debugFolder = this.experience.debug.ui.addFolder("card")
     }
-    this.initialPosition.x += id / 100
+    this.splineProgression = this.id / lastCardId;
   }
 
   init = () => {
     this.createMesh();
-    // this.createPath();
+    this.createPath();
     if (this.experience.debug.active) {
       this.setDebugObject()
     }
@@ -107,7 +112,7 @@ export default class Card implements LifeTimeObject {
       ease: "power1.out"
     })
     gsap.to(this, {
-      speed: 1,
+      speed: this.targetSpeed,
       ease: "power2.out",
       duration: .8,
       onComplete: () => this.spawnCompleted = true
@@ -122,13 +127,14 @@ export default class Card implements LifeTimeObject {
 
   createPath = () => {
     const points = [
-      new THREE.Vector3( -10, 0, 10 ),
-     	new THREE.Vector3( -5, 5, 5 ),
-     	new THREE.Vector3( 0, 0, 0 ),
-     	new THREE.Vector3( 5, -5, 5 ),
+      new THREE.Vector3(-.16, 0.3, -1.8),
+      new THREE.Vector3(-.16, 0.2, -2.8),
+     	new THREE.Vector3( -.16, 0.5, -3.5 ),
+     	new THREE.Vector3( -.16, -0.1, -4.3 ),
+     	new THREE.Vector3( -.16, 0.3, -5.5 ),
     ]
-    const path = new THREE.CatmullRomCurve3(points)
-    const geometry = new THREE.BufferGeometry().setFromPoints( path.getPoints( 50 ) );
+    this.path = new THREE.CatmullRomCurve3(points)
+    const geometry = new THREE.BufferGeometry().setFromPoints( this.path.getPoints( 50 ) );
     const material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
 
     const curveObject = new THREE.Line(geometry, material);
@@ -160,7 +166,7 @@ export default class Card implements LifeTimeObject {
 
   createGeometry = () => {
     // return createRoundedRectangleGeometry(-0.5,-0.25,16/20,9/20,.15);
-    return new THREE.CircleGeometry(.3, 200)
+    // return new THREE.CircleGeometry(.3, 200)
     return new THREE.PlaneGeometry(16 / 20, 9 / 20, 200, 200);
   };
 
@@ -183,11 +189,11 @@ export default class Card implements LifeTimeObject {
     material.transparent = false;
     material.alphaTest = .5;
     const waveY = sin(time.add(positionLocal.x.mul(this.waveFrequency))).mul(this.waveAmplitude) //TODO add speed
-    const waveZ = sin(time.add(positionLocal.y.mul(this.waveFrequency).mul(1.5))).mul(this.waveAmplitude.mul(10))
+    // const waveZ = sin(time.add(positionLocal.y.mul(this.waveFrequency).mul(1.5))).mul(this.waveAmplitude.mul(10))
     const newPosition = vec3(positionLocal.x, positionLocal.y.add(waveY), positionLocal.z)
     material.positionNode = newPosition;
     material.colorNode = texture(resources.items["Rendus 3D Christian Boragine"] as THREE.Texture)
-    // material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: this.cardRadius }), 1, 0)
+    material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: this.cardRadius }), 1, 0)
     return material;
   };
 
@@ -196,7 +202,8 @@ export default class Card implements LifeTimeObject {
 
   update = () => {
     this.animateHover()
-    this.moveCard()
+    // this.moveCard()
+    this.moveCardOnPath();
   };
 
   animateHover = () => {
@@ -216,10 +223,18 @@ export default class Card implements LifeTimeObject {
     this.previousHoverState = this.hoverState
   }
 
+  moveCardOnPath = () => {
+    if (!this.path) return;
+    // const t = (this.experience.time.elapsed / 3000 % 6) / 6;
+
+    const position = this.path.getPointAt(1)
+    this.mesh.position.copy(position)
+  }
+
   moveCard = () => {
     // if (this.friction === 0) return;
-    this.mesh.position.y = lerp(this.mesh.position.y, this.targetPosition.x, this.friction * this.speed);
-    this.mesh.position.z = lerp(this.mesh.position.z, this.targetPosition.y, this.friction * this.speed);
+    this.mesh.position.y = lerp(this.mesh.position.y, this.targetPosition.x, this.friction * this.speed * this.experience.time.delta);
+    this.mesh.position.z = lerp(this.mesh.position.z, this.targetPosition.y, this.friction * this.speed * this.experience.time.delta);
     // this.mesh.lookAt(this.experience.camera.instance.position)
 
     // console.log(lerp(this.mesh.position.y, this.targetPosition.x, this.friction))
