@@ -21,22 +21,11 @@ export default class Card implements LifeTimeObject {
   declare private experience: Experience;
   declare private debugFolder: GUI;
 
-  private friction = 0;
-  private targetFriction = .0004;
-  private directionRadius = 10;
-  private targetPosition = new THREE.Vector2();
   public hoverState: "hover" | "idle" = "idle"
   public previousHoverState: "hover" | "idle" = this.hoverState
-
-  public targetAngle = Math.PI / 10;
-
-  private initialPosition = new THREE.Vector3(-.16, 0.3, -2.09)
-  private initialSpeed = .9;
-  private targetSpeed = .08;
-  private speed = this.initialSpeed
-  private spawnCompleted = false;
-  declare private xRotation: number
+  private speed = .00001;
   declare private splineProgression: number;
+  private initialized = false;
 
   //path
   declare private path: THREE.CatmullRomCurve3
@@ -44,17 +33,15 @@ export default class Card implements LifeTimeObject {
   //Shader
   private targetWaveAmplitude = .01
   private targetWaveFrequency = 21.9
-  private maxWaveAmplitude = .01
-  private maxWaveFrequency = 60
-  public waveAmplitude = uniform(this.maxWaveAmplitude);
-  public waveFrequency = uniform(this.maxWaveAmplitude);
+  public waveAmplitude = uniform(this.targetWaveAmplitude);
+  public waveFrequency = uniform(this.targetWaveFrequency);
   public targetCardRadius = .15
   public maxCardRadius = 1.
-  public cardRadius = uniform(this.maxCardRadius);
+  public cardRadius = uniform(this.targetCardRadius);
   private width = 16 / 20;
   private height = 9 / 20;
 
-  constructor(id: number, title: string, imageUrl: string, lastCardId: number) {
+  constructor(id: number, title: string, imageUrl: string, cardLength: number) {
     if (typeof id !== "number" || !title || !imageUrl) {
       throw new Error("Can't create card: id, title, or imageUrl is not valid");
     }
@@ -66,9 +53,10 @@ export default class Card implements LifeTimeObject {
     }
     this.experience = Experience.instance;
     if (this.experience.debug.active) {
-      this.debugFolder = this.experience.debug.ui.addFolder("card")
+      this.debugFolder = this.experience.debug.ui.addFolder("Card")
     }
-    this.splineProgression = this.id / lastCardId;
+    this.splineProgression = (this.id + 1) / cardLength;
+    console.log(this.splineProgression)
   }
 
   init = () => {
@@ -77,47 +65,8 @@ export default class Card implements LifeTimeObject {
     if (this.experience.debug.active) {
       this.setDebugObject()
     }
+    this.initialized = true;
   };
-
-  spawnCard = () => {
-    this.resetValues()
-
-    const angle =
-      (3 * 2 * Math.PI) / 4 //initial angle
-      + this.targetAngle // angle to add up and down
-      * (Math.random() - .5) * 2
-    this.targetPosition.x = this.initialPosition.y + Math.cos(angle) * this.directionRadius;
-    this.targetPosition.y = this.initialPosition.z + Math.sin(angle) * this.directionRadius;
-    this.friction = this.targetFriction
-    gsap.to(this.mesh.scale, {
-      x: 1,
-      y: 1,
-      z: 1,
-      duration: 2.,
-      ease: "back.out"
-    })
-    gsap.to(this.cardRadius, {
-      value: this.targetCardRadius,
-      duration: 1.5,
-      ease: "back.out"
-    })
-    gsap.to(this.waveFrequency, {
-      value: this.targetWaveFrequency,
-      duration: 2.5,
-      ease: "power1.out"
-    })
-    gsap.to(this.waveAmplitude, {
-      value: this.targetWaveAmplitude,
-      duration: 2.5,
-      ease: "power1.out"
-    })
-    gsap.to(this, {
-      speed: this.targetSpeed,
-      ease: "power2.out",
-      duration: .8,
-      onComplete: () => this.spawnCompleted = true
-    })
-  }
 
   createMesh = () => {
     this.mesh = new THREE.Mesh(this.createGeometry(), this.createMaterial())
@@ -139,29 +88,13 @@ export default class Card implements LifeTimeObject {
 
     const curveObject = new THREE.Line(geometry, material);
     this.experience.scene.add(curveObject)
+    const position = this.path.getPointAt(this.splineProgression)
+    this.mesh.position.copy(position)
   }
 
   resetValues = () => {
-    this.mesh.position.x = this.initialPosition.x
-    this.mesh.position.y = this.initialPosition.y
-    this.mesh.position.z = this.initialPosition.z
-    this.targetPosition.x = this.initialPosition.y
-    this.targetPosition.y = this.initialPosition.z
     const camRotation = this.experience.camera.instance.rotation
     this.mesh.rotation.set(camRotation.x, camRotation.y, camRotation.z)
-    this.speed = this.initialSpeed
-    this.spawnCompleted = false;
-    this.mesh.scale.set(0, 0, 0);
-    this.waveAmplitude.value = this.maxWaveAmplitude
-    this.waveFrequency.value = this.maxWaveFrequency
-    this.cardRadius.value = this.maxCardRadius
-
-    this.xRotation =
-      Math.PI / 10 // angle to add up and down
-      * (Math.random() - .5) * 2
-
-    console.log(this.xRotation)
-    this.mesh.rotation.x += this.xRotation;
   }
 
   createGeometry = () => {
@@ -201,19 +134,20 @@ export default class Card implements LifeTimeObject {
   destroy = () => { };
 
   update = () => {
+    if (!this.initialized) return;
     this.animateHover()
     // this.moveCard()
     this.moveCardOnPath();
   };
 
   animateHover = () => {
-    if (!this.spawnCompleted) return;
+    // if (!this.spawnCompleted) return;
     if (this.previousHoverState === this.hoverState) return;
-    const newFriction = this.hoverState === "hover" ? 0 : this.targetFriction
-    gsap.to(this, {
-      friction: newFriction,
-      duration: 1.5
-    })
+    // const newFriction = this.hoverState === "hover" ? 0 : this.targetFriction
+    // gsap.to(this, {
+    //   friction: newFriction,
+    //   duration: 1.5
+    // })
     const scale = this.hoverState === "hover" ? 1.1 : 1.
     gsap.to(this.mesh.scale,{
       x: scale,
@@ -225,19 +159,13 @@ export default class Card implements LifeTimeObject {
 
   moveCardOnPath = () => {
     if (!this.path) return;
-    // const t = (this.experience.time.elapsed / 3000 % 6) / 6;
+    this.splineProgression += this.experience.time.delta * this.speed
+    if (this.splineProgression > 1.) {
+      this.splineProgression = 0;
+    }
 
-    const position = this.path.getPointAt(1)
+    const position = this.path.getPointAt(this.splineProgression)
     this.mesh.position.copy(position)
-  }
-
-  moveCard = () => {
-    // if (this.friction === 0) return;
-    this.mesh.position.y = lerp(this.mesh.position.y, this.targetPosition.x, this.friction * this.speed * this.experience.time.delta);
-    this.mesh.position.z = lerp(this.mesh.position.z, this.targetPosition.y, this.friction * this.speed * this.experience.time.delta);
-    // this.mesh.lookAt(this.experience.camera.instance.position)
-
-    // console.log(lerp(this.mesh.position.y, this.targetPosition.x, this.friction))
   }
 
   setDebugObject = () => {
@@ -285,7 +213,5 @@ export default class Card implements LifeTimeObject {
       .min(-3.14)
       .max(3.14)
       .step(0.01);
-
-    this.debugFolder.add(this, "spawnCard")
   }
 }

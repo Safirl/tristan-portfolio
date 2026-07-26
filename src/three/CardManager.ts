@@ -21,9 +21,9 @@ export default class CardManager implements LifeTimeObject {
 
   constructor(projects: project[]) {
     //@todo later replace by real projects
-    const p = [0,1,2]
+    const p = [0, 1, 2, 3, 4]
     p.forEach((project) => {
-      const card = new Card(project, "1", "1", p.length - 1)
+      const card = new Card(project, "1", "1", p.length)
       this.cards.push(card)
     })
     if (!Experience.instance) {
@@ -31,7 +31,7 @@ export default class CardManager implements LifeTimeObject {
     }
     this.experience = Experience.instance;
     if (this.experience.debug.active) {
-      this.debugFolder = this.experience.debug.ui.addFolder("card")
+      this.debugFolder = this.experience.debug.ui.addFolder("Card Manager")
     }
   }
 
