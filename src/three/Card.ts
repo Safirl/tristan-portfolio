@@ -13,6 +13,7 @@ import gsap from "gsap"
 import type ExpWorld from "./World";
 import { lerp } from "three/src/math/MathUtils.js";
 import type CardManager from "./CardManager";
+import {easeInOutCubic, easeOutElastic} from "@plugins/three-base-experience"
 
 export default class Card implements LifeTimeObject {
   declare public id: number;
@@ -30,6 +31,7 @@ export default class Card implements LifeTimeObject {
 
   //path
   declare private path: THREE.CatmullRomCurve3
+  public scaleThreshold = .25;
 
   //Shader
   private targetWaveAmplitude = .01
@@ -88,7 +90,7 @@ export default class Card implements LifeTimeObject {
     const material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
 
     const curveObject = new THREE.Line(geometry, material);
-    this.experience.scene.add(curveObject)
+    // this.experience.scene.add(curveObject)
     const position = this.path.getPointAt(this.splineProgression)
     this.mesh.position.copy(position)
   }
@@ -100,7 +102,7 @@ export default class Card implements LifeTimeObject {
 
   createGeometry = () => {
     // return createRoundedRectangleGeometry(-0.5,-0.25,16/20,9/20,.15);
-    // return new THREE.CircleGeometry(.3, 200)
+    // return new THREE.CircleGeometry(.2, 200)
     return new THREE.PlaneGeometry(16 / 20, 9 / 20, 200, 200);
   };
 
@@ -144,7 +146,10 @@ export default class Card implements LifeTimeObject {
   };
 
   animateScaleBasedOnSplineProgression = () => {
-    const scale = Math.
+
+    let scaleProgression = Math.min(this.splineProgression, this.scaleThreshold) / this.scaleThreshold;
+    scaleProgression = easeInOutCubic(scaleProgression);
+    this.mesh.scale.set(scaleProgression, scaleProgression, scaleProgression)
   }
 
   animateHover = () => {
@@ -178,6 +183,7 @@ export default class Card implements LifeTimeObject {
   setDebugObject = () => {
     this.debugFolder.add(this.waveAmplitude, "value").min(0).max(100).name("wave amplitude").step(.001)
     this.debugFolder.add(this.waveFrequency, "value").min(0).max(100).name("wave frequency").step(.001)
+    this.debugFolder.add(this, "scaleThreshold").min(0).max(1).name("scale threshold").step(.1)
 
     const positionFolder = this.debugFolder.addFolder("Position");
     positionFolder.open(false)

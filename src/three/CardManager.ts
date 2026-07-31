@@ -10,7 +10,7 @@ export default class CardManager implements LifeTimeObject {
   public spawnCountdown = 5000.;
   private timer = this.spawnCountdown;
   private currentCard = 0;
-  public speed = .00001
+  public speed = .00003
 
   private declare experience: Experience;
   private declare debugFolder: GUI
@@ -18,11 +18,11 @@ export default class CardManager implements LifeTimeObject {
   /**
    * Spacing between each card;
    */
-  private spacing = 0.1;
+  private spacing = 0.2;
 
   constructor(projects: project[]) {
     //@todo later replace by real projects
-    const p = [0]
+    const p = [0, 1, 2, 3, 4]
     p.forEach((project) => {
       const card = new Card(project, "1", "1", p.length, this)
       this.cards.push(card)
