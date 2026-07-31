@@ -3,8 +3,7 @@ import { type project } from "./types";
 import Card from "./Card";
 import type ExpWorld from "./World";
 import * as THREE from "three"
-import type GUI from "lil-gui";
-import ScrollListener from "./ScrollListener";
+import GUI from "lil-gui";
 import gsap from "gsap";
 
 export default class CardManager implements LifeTimeObject {

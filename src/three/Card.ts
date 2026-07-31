@@ -1,6 +1,7 @@
 import {
   Actor,
   Debug,
+  EventEmitter,
   Experience,
   roundedBoxSDF,
   type LifeTimeObject,
@@ -15,7 +16,7 @@ import { lerp } from "three/src/math/MathUtils.js";
 import type CardManager from "./CardManager";
 import {easeInOutCubic, easeOutElastic} from "@plugins/three-base-experience"
 
-export default class Card implements LifeTimeObject {
+export default class Card extends EventEmitter implements LifeTimeObject {
   declare public id: number;
   declare public title: string;
   declare public imageUrl: string;
@@ -45,6 +46,7 @@ export default class Card implements LifeTimeObject {
   private height = 9 / 20;
 
   constructor(id: number, title: string, imageUrl: string, cardLength: number, cardManager: CardManager) {
+    super()
     if (typeof id !== "number" || !title || !imageUrl) {
       throw new Error("Can't create card: id, title, or imageUrl is not valid");
     }
@@ -139,17 +141,18 @@ export default class Card implements LifeTimeObject {
 
   update = () => {
     if (!this.initialized) return;
-    this.animateHover()
-    // this.moveCard()
     this.moveCardOnPath();
+    this.animateHover()
     this.animateScaleBasedOnSplineProgression();
+    // this.moveCard()
   };
 
   animateScaleBasedOnSplineProgression = () => {
-
     let scaleProgression = Math.min(this.splineProgression, this.scaleThreshold) / this.scaleThreshold;
-    scaleProgression = easeInOutCubic(scaleProgression);
-    this.mesh.scale.set(scaleProgression, scaleProgression, scaleProgression)
+    if (scaleProgression < 1) {
+      scaleProgression = easeInOutCubic(scaleProgression);
+      this.mesh.scale.set(scaleProgression, scaleProgression, scaleProgression)
+    }
   }
 
   animateHover = () => {
@@ -165,6 +168,7 @@ export default class Card implements LifeTimeObject {
       x: scale,
       y: scale,
       z: scale,
+      onUpdate: () =>console.log("coucou")
     })
     this.previousHoverState = this.hoverState
   }
