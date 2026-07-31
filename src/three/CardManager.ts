@@ -4,16 +4,26 @@ import Card from "./Card";
 import type ExpWorld from "./World";
 import * as THREE from "three"
 import type GUI from "lil-gui";
+import ScrollListener from "./ScrollListener";
+import gsap from "gsap";
 
 export default class CardManager implements LifeTimeObject {
   public cards: Card[] = [];
   public spawnCountdown = 5000.;
-  private timer = this.spawnCountdown;
-  private currentCard = 0;
-  public speed = .00003
+  public initialSpeed = .00003
+  public speed = this.initialSpeed
+  private acceleration = 0
+  public maxAcceleration = .0005
 
   private declare experience: Experience;
   private declare debugFolder: GUI
+
+  /*
+  * Scrolling
+  */
+  private idleScrollElapsed = 0.
+  //in ms
+  private idleScrollThreshold = 100
 
   /**
    * Spacing between each card;
@@ -22,7 +32,7 @@ export default class CardManager implements LifeTimeObject {
 
   constructor(projects: project[]) {
     //@todo later replace by real projects
-    const p = [0, 1, 2, 3, 4]
+    const p = [0, 1, 2, 3]
     p.forEach((project) => {
       const card = new Card(project, "1", "1", p.length, this)
       this.cards.push(card)
@@ -43,21 +53,37 @@ export default class CardManager implements LifeTimeObject {
     this.cards.forEach((c) => {
       c.init()
     })
+    document.addEventListener("wheel", this.onDocumentScroll)
   };
 
-  destroy = () => { };
+  onDocumentScroll = (e: any) => {
+    this.idleScrollElapsed = 0.
+    this.acceleration = Math.abs(e.wheelDelta) / 100000
+  };
+
+  checkForIdleScroll = () => {
+    this.idleScrollElapsed += this.experience.time.delta
+    if (this.idleScrollElapsed > this.idleScrollThreshold && this.acceleration > 0) {
+      gsap.to(this, {
+        acceleration: 0.,
+        ease: "power1",
+        duration: .1
+      })
+    }
+  }
+
+  destroy = () => {
+    document.removeEventListener("wheel", this.onDocumentScroll)
+  };
 
   update = () => {
+    this.checkForIdleScroll()
+    this.speed = this.initialSpeed + Math.min(this.acceleration, this.maxAcceleration)
     this.cards.forEach((c) => {
       c.update();
     })
     const exp = Experience.instance;
     if (!exp) return;
-    // this.timer += exp.time.delta
-    // if (this.timer >= this.spawnCountdown) {
-    //   this.spawnCard()
-    //   this.timer = 0;
-    // }
 
     const world = exp.world as ExpWorld
     const cardMeshes = this.cards.map((c) => c.mesh)
@@ -77,19 +103,8 @@ export default class CardManager implements LifeTimeObject {
     })
   };
 
-  // spawnCard = () => {
-  //   const card = this.cards[this.currentCard]
-  //   if (!card) throw new Error(`no card found with id, ${this.currentCard}`);
-
-  //   card.spawnCard();
-  //   this.currentCard++;
-  //   if (this.currentCard > this.cards.length - 1) {
-  //     this.currentCard = 0;
-  //   }
-  // }
-
   setDebugObject = () => {
     this.debugFolder.add(this, "spawnCountdown").min(0).max(1000000);
-    this.debugFolder.add(this, "speed").min(0).max(10).step(.00001).name("speed");
+    this.debugFolder.add(this, "initialSpeed").min(0).max(10).step(.00001).name("initialSpeed");
   }
 }

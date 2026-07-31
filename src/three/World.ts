@@ -52,6 +52,7 @@ export default class ExpWorld extends World {
   }
 
   onMouseMove = (event: MouseEvent) => {
+    if (!this.experience) return;
 		event.preventDefault();
 
 		this.mousePosition.x = ( event.clientX / this.experience.sizes.width ) * 2 - 1;
