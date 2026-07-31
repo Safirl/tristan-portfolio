@@ -6,12 +6,13 @@ import {
   type LifeTimeObject,
 } from "@plugins/three-base-experience";
 import * as THREE from "three/webgpu";
-import { Discard, float, Fn, positionLocal, select, sin, texture, time, uniform, uv, vec2, vec3 } from "three/tsl";
+import { Discard, float, Fn, positionLocal, select, sin, smoothstep, texture, time, uniform, uv, vec2, vec3 } from "three/tsl";
 import { createRoundedRectangleGeometry } from "@plugins/three-base-experience";
 import type GUI from "lil-gui";
 import gsap from "gsap"
 import type ExpWorld from "./World";
 import { lerp } from "three/src/math/MathUtils.js";
+import type CardManager from "./CardManager";
 
 export default class Card implements LifeTimeObject {
   declare public id: number;
@@ -20,10 +21,10 @@ export default class Card implements LifeTimeObject {
   declare public mesh: THREE.Mesh;
   declare private experience: Experience;
   declare private debugFolder: GUI;
+  declare private cardManager: CardManager
 
   public hoverState: "hover" | "idle" = "idle"
   public previousHoverState: "hover" | "idle" = this.hoverState
-  private speed = .00001;
   declare private splineProgression: number;
   private initialized = false;
 
@@ -41,7 +42,7 @@ export default class Card implements LifeTimeObject {
   private width = 16 / 20;
   private height = 9 / 20;
 
-  constructor(id: number, title: string, imageUrl: string, cardLength: number) {
+  constructor(id: number, title: string, imageUrl: string, cardLength: number, cardManager: CardManager) {
     if (typeof id !== "number" || !title || !imageUrl) {
       throw new Error("Can't create card: id, title, or imageUrl is not valid");
     }
@@ -56,7 +57,7 @@ export default class Card implements LifeTimeObject {
       this.debugFolder = this.experience.debug.ui.addFolder("Card")
     }
     this.splineProgression = (this.id + 1) / cardLength;
-    console.log(this.splineProgression)
+    this.cardManager = cardManager
   }
 
   init = () => {
@@ -127,6 +128,7 @@ export default class Card implements LifeTimeObject {
     material.positionNode = newPosition;
     material.colorNode = texture(resources.items["Rendus 3D Christian Boragine"] as THREE.Texture)
     material.opacityNode = select(alphaTest({ width: widthNode, height: heightNode, radius: this.cardRadius }), 1, 0)
+
     return material;
   };
 
@@ -138,7 +140,12 @@ export default class Card implements LifeTimeObject {
     this.animateHover()
     // this.moveCard()
     this.moveCardOnPath();
+    this.animateScaleBasedOnSplineProgression();
   };
+
+  animateScaleBasedOnSplineProgression = () => {
+    const scale = Math.
+  }
 
   animateHover = () => {
     // if (!this.spawnCompleted) return;
@@ -159,7 +166,7 @@ export default class Card implements LifeTimeObject {
 
   moveCardOnPath = () => {
     if (!this.path) return;
-    this.splineProgression += this.experience.time.delta * this.speed
+    this.splineProgression += this.experience.time.delta * this.cardManager.speed
     if (this.splineProgression > 1.) {
       this.splineProgression = 0;
     }
